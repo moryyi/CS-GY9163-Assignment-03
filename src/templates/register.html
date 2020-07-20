@@ -1,0 +1,26 @@
+{% extends "layout.html" %}
+{% from "_formhelpers.html" import render_field %}
+{% block body %}
+
+<div class="container">
+  <h1>Register</h1>
+  <form name="register" id="register" action="/cs9163/hw02/register" method="POST">
+    {{ form.csrf_token }}
+
+    <div class="form-group">
+      {{ render_field(form.username, class="form-control", size=32) }}
+    </div>
+
+    <div class="form-group">
+      {{ render_field(form.password, class="form-control", size=32) }}
+    </div>
+
+    <div class="form-group">
+      {{ render_field(form.phone, class="form-control", size=32) }}
+    </div>
+    {{ render_field(form.submit, class="btn btn-primary") }}
+
+  </form>
+</div>
+
+{% endblock %}

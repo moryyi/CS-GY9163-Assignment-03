@@ -1,0 +1,38 @@
+{% extends 'layout.html' %}
+{% from "_formhelpers.html" import render_field %}
+{% block body %}
+
+<div class="container">
+  <div>
+    <br>
+  </div>
+  <form name="spell" action="/cs9163/hw02/spell_check" method="POST">
+    {{ form.hidden_tag() }}
+    <div class="input-group">
+      <div class="input-group-prepend">
+        <span class="input-group-text">Text to be checked</span>
+      </div>
+      {{ render_field(form.inputtext, class="form-control") }}
+    </div>
+    <div class="input-group">
+      {{ render_field(form.submit, class="btn btn-primary") }}
+
+    </div>
+  </form>
+</div>
+<div class="container">
+  <table class="table">
+    <tr>
+      <th scope="col">supplied text</th>
+      <th scope="col">misspelled words</th>
+    </tr>
+    {% if response %}
+    <tr>
+      <th scope="col" id="textout">{{ response[0] }}</th>
+      <th scope="col" id="misspelled">{{ response[1] }}</th>
+    </tr>
+    {% endif %}
+  </table>
+</div>
+
+{% endblock %}

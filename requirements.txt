@@ -1,0 +1,8 @@
+flask
+flask-paranoid
+Flask-Testing
+flask_wtf
+tox
+tox-travis
+pytest
+werkzeug
