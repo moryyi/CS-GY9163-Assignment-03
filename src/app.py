@@ -46,7 +46,8 @@ class ContentForm(FlaskForm):
 
 USER_DATABASE = {}
 
-ROOT_URL = "/cs9163/hw02"
+# ROOT_URL = "/cs9163/hw02"
+ROOT_URL = ""
 
 def configure_routes(app):
 
