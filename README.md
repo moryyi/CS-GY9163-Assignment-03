@@ -1,7 +1,5 @@
 # CS-GY9163-Assignment-02
 
-[![Build Status](https://travis-ci.org/qb1ng/CS-GY9163-Assignment-02.svg?branch=master)](https://travis-ci.org/qb1ng/CS-GY9163-Assignment-02)
-
 Repo for CS9163 Assignment 02
 
 ## Spell-Check Website
