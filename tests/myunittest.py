@@ -8,7 +8,7 @@ import unittest
 
 from src.app import configure_routes
 
-ROOT_URL = "/cs9163/hw02"
+ROOT_URL = ""
 
 class MyTest(TestCase):
   def create_app(self):
