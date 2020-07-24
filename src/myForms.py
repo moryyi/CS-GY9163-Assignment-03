@@ -1,5 +1,5 @@
 from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, SubmitField, TextAreaField
+from wtforms import StringField, PasswordField, SubmitField, TextAreaField, IntegerField
 from wtforms.validators import DataRequired
 
 
@@ -25,3 +25,13 @@ class ContentForm(FlaskForm):
   inputtext = TextAreaField(id="inputtext", validators=[DataRequired()],
                           render_kw={'placeholder': 'Text to check spelling', 'aria-label': 'With textarea'})
   submit = SubmitField("check")
+
+class AdminLoginLogQueryForm(FlaskForm):
+  userid = IntegerField(id="userid", validators=[DataRequired()],
+                          render_kw={'placeholder': 'uid of User to be checked'})
+  submit = SubmitField("search")
+
+class AdminQueryCheckForm(FlaskForm):
+  userquery = StringField(id="userquery",
+                          render_kw={'placeholder': 'username to be checked queries'})
+  submit = SubmitField("search")

@@ -13,43 +13,31 @@ from werkzeug.security import generate_password_hash, check_password_hash
 import base64, hashlib, random, string
 import subprocess
 import sys, os
+import datetime
 
-# from src.myForms import RegisterForm, LoginForm, ContentForm
-# BASE_DIR = os.path.dirname(
-# 	os.path.dirname(os.path.abspath(__file__))
-# )
-# sys.path.append(BASE_DIR)
-# from myForms import RegisterForm, LoginForm, ContentForm
-class RegisterForm(FlaskForm):
-	username = StringField(id="uname", validators=[DataRequired()],
-													render_kw={'placeholder': 'Username'})
-	password = PasswordField(id="pword", validators=[DataRequired()],
-													render_kw={'placeholder': 'Password'})
-	phone = StringField(id="2fa", validators=[DataRequired()],
-													render_kw={'placeholder': 'Cell Phone Number'})
-	submit = SubmitField("submit")
-
-class LoginForm(FlaskForm):
-	username = StringField(id="uname", validators=[DataRequired()],
-													render_kw={'placeholder': 'Username'})
-	password = PasswordField(id="pword", validators=[DataRequired()],
-													render_kw={'placeholder': 'Password'})
-	phone = StringField(id="2fa", validators=[DataRequired()],
-													render_kw={'placeholder': 'Cell Phone Number'})
-	login = SubmitField("login")
-
-class ContentForm(FlaskForm):
-	inputtext = TextAreaField(id="inputtext", validators=[DataRequired()],
-													render_kw={'placeholder': 'Text to check spelling', 'aria-label': 'With textarea'})
-	submit = SubmitField("check")
+from src.myModels import db, User, LoginLog, Query
+from src.myForms import RegisterForm, LoginForm, ContentForm, AdminLoginLogQueryForm, AdminQueryCheckForm
 
 
 USER_DATABASE = {}
 
-# ROOT_URL = "/cs9163/hw02"
 ROOT_URL = ""
 
 def configure_routes(app):
+
+	# Initialize database
+	db.init_app(app)
+	with app.app_context():
+		db.drop_all()
+		db.create_all()
+		admin = User(
+			username='admin',
+			password=generate_password_hash('Administrator@1'),
+			phone='12345678901',
+			ifAdmin=True
+		)
+		db.session.add(admin)
+		db.session.commit()
 
 	# Content-Security-Headers
 	@app.after_request
@@ -75,10 +63,21 @@ def configure_routes(app):
 
 			(ifLoginSuccess, errorMessage) = login_with_user_info(username, password, phone)
 			if ifLoginSuccess:
-				session.clear()
 				session["log"] = True
 				session["session_id"] = gen_random_string(16)
 				session.permanent = True
+				# Clear the previous un-logout activity record
+				unlogout_records = LoginLog.query\
+																	.filter((LoginLog.uid == session["uid"]) & (LoginLog.logoutTime == None))\
+																	.all()
+				for r in unlogout_records:
+					r.logoutTime = datetime.datetime.utcnow()
+					db.session.commit()
+
+				# Log this login activity
+				new_login = LoginLog(uid=session["uid"])
+				db.session.add(new_login)
+				db.session.commit()
 				flash(["result", errorMessage], "success")
 				resp = make_response(redirect(url_for('spell_check')))
 				resp.set_cookie('session_id', session["session_id"], httponly=True, samesite='Lax')
@@ -92,6 +91,15 @@ def configure_routes(app):
 	# Logout
 	@app.route(ROOT_URL + '/logout', methods=['GET'])
 	def logout():
+		if "uid" not in session:
+			pass
+		else:
+			# Update table Logs for logoutTime record
+			current_log = LoginLog.query.filter_by(uid=session["uid"]).order_by(LoginLog.rid.desc()).first()
+			if current_log != None:
+				current_log.logoutTime = datetime.datetime.utcnow()
+				db.session.commit()
+
 		session.clear()
 		return redirect(url_for("login"))
 
@@ -114,6 +122,7 @@ def configure_routes(app):
 			else:
 				flash(["success", errorMessage], "success")
 				resp = make_response(redirect(url_for('login')))
+				# resp = make_response(render_template("./register.html", form=form))
 				return resp
 		resp = make_response(render_template("./register.html", form=form))
 		return resp
@@ -126,7 +135,14 @@ def configure_routes(app):
 		if form.validate_on_submit():
 			content = form.inputtext.data
 			misspelled_words = check_text_spelling(content)
-			response = [content, misspelled_words]			
+			response = [content, misspelled_words]
+			current_query = Query(
+				uid=session["uid"],
+				qtext=content,
+				qresult=misspelled_words
+			)
+			db.session.add(current_query)
+			db.session.commit()
 			resp = make_response(render_template('./spell.html', response=response, form=form))
 			return resp
 
@@ -139,20 +155,119 @@ def configure_routes(app):
 				return resp
 
 
+	# Record History
+	# Page containing all query urls
+	@app.route(ROOT_URL + '/history', methods=['GET', 'POST'])
+	def history():
+		if "log" not in session or session["log"] == False:
+			flash(["error", "You are not login"], "danger")
+			resp = make_response(redirect(url_for("spell_check")))
+			return resp
+		form = AdminQueryCheckForm()
+		if session["ifAdmin"] != True:
+			queries = Query.query\
+												.join(User, User.uid == Query.uid)\
+												.add_columns(Query.qid, Query.uid, User.username, Query.qtext, Query.qresult)\
+												.filter_by(uid=session["uid"]).all()
+		else:
+			if form.validate_on_submit():
+				userquery = form.userquery.data
+				if userquery != '':
+					existing_user = User.query.filter_by(username=userquery).first()
+					queries = Query.query\
+												.join(User, User.uid == Query.uid)\
+												.add_columns(Query.qid, Query.uid, User.username, Query.qtext, Query.qresult)\
+												.filter_by(uid=existing_user.uid).all()
+				else:
+					queries = Query.query\
+												.join(User, User.uid == Query.uid)\
+												.add_columns(Query.qid, Query.uid, User.username, Query.qtext, Query.qresult)\
+												.all()
+			else:
+				queries = Query.query\
+												.join(User, User.uid == Query.uid)\
+												.add_columns(Query.qid, Query.uid, User.username, Query.qtext, Query.qresult)\
+												.all()
+		resp = make_response(render_template("./history.html", queries=queries, form=form))
+		return resp
+
+
+	# Page for each query record
+	@app.route(ROOT_URL + '/history/query<int:qid>', methods=['GET'])
+	def checkQueryByQid(qid):
+		print("qid: {}".format(qid))
+		if "log" not in session or session["log"] == False:
+			flash(["error", "You are not login"], "danger")
+			resp = make_response(redirect(url_for("spell_check")))
+			return resp
+		# current_query = Query.query.filter_by(qid=qid, uid=session["uid"]).all()
+		if session["ifAdmin"] != True:
+			current_query = Query.query\
+													.join(User, User.uid == Query.uid)\
+													.add_columns(Query.qid, Query.uid, User.username, Query.qtext, Query.qresult)\
+													.filter((Query.qid == qid) & (Query.uid == session["uid"]))\
+													.first()
+		else:
+			current_query = Query.query\
+													.join(User, User.uid == Query.uid)\
+													.add_columns(Query.qid, Query.uid, User.username, Query.qtext, Query.qresult)\
+													.filter(Query.qid == qid)\
+													.first()
+		resp = make_response(render_template("./query.html", query=current_query))
+		return resp
+
+
+	# Login History
+	@app.route(ROOT_URL + '/login_history', methods=['GET', 'POST'])
+	def login_history():
+		if "ifAdmin" not in session or session["ifAdmin"] == False:
+			flash(["error", "You are not login as an admin"], "danger")
+			resp = make_response(redirect(url_for("spell_check")))
+			return resp
+
+		form = AdminLoginLogQueryForm()
+		if form.validate_on_submit():
+			uid = form.userid.data
+			
+			records = User.query\
+					.join(LoginLog, User.uid == LoginLog.uid)\
+					.add_columns(LoginLog.rid, User.uid, User.username, LoginLog.loginTime, LoginLog.logoutTime)\
+					.filter(User.uid == uid)\
+					.order_by(LoginLog.rid)\
+					.all()
+
+			resp = make_response(render_template("./loginhistory.html", form=form, records=records))
+			return resp
+		else:
+			resp = make_response(render_template("./loginhistory.html", form=form))
+			return resp
+
+
 	# Utils
 	def register_with_user_info(username, password, phone):
 		"""
 		return ifRegisterSuccess: bool, errorMessage: string
 		"""
 		password = generate_password_hash(password)
-		if username in USER_DATABASE.keys():
+		# Check whether username already existed
+		existing_user = User.query.filter_by(username=username).first()
+
+		# if username in USER_DATABASE.keys():
+		if existing_user is not None:
 			# Given username has been already registered
 			return (False, "failure")
 		else:
-			USER_DATABASE[username] = {
-				"password": password,
-				"phone": phone
-			}
+			new_user = User(
+				username=username,
+				password=password,
+				phone=phone
+			)
+			db.session.add(new_user)
+			db.session.commit()
+			# USER_DATABASE[username] = {
+			# 	"password": password,
+			# 	"phone": phone
+			# }
 			return (True, "success")
 
 
@@ -160,20 +275,31 @@ def configure_routes(app):
 		"""
 		return ifLoginSuccess: bool, errorMessage: string
 		"""
-		if username not in USER_DATABASE.keys():
+
+		existing_user = User.query.filter_by(username=username).first()
+
+		# if username not in USER_DATABASE.keys():
+		if existing_user is None:
 			return (False, "Incorrect")
 		else:
 			password = generate_password_hash(password)
 			# if password != USER_DATABASE[username]["password"]:
-			if check_password_hash(password, USER_DATABASE[username]["password"]):
+			# if check_password_hash(password, USER_DATABASE[username]["password"]):
+			if check_password_hash(password, existing_user.password):
 				return (False, "Incorrect")
-			elif phone != USER_DATABASE[username]["phone"]:
+			# elif phone != USER_DATABASE[username]["phone"]:
+			elif phone != existing_user.phone:
 				return (False, "Two-factor failure")
 			else:
+				session["username"] = existing_user.username
+				session["ifAdmin"] = existing_user.ifAdmin
+				session["uid"] = existing_user.uid
 				return (True, "Login success")
+
 
 	def gen_random_string(num):
 		return ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(num))
+
 
 	def gen_random_filename():
 		_f = gen_random_string(16)
@@ -205,6 +331,10 @@ app.WTF_CSRF_SECRET_KEY = "CS9163Assignment02WebsiteFlaskWTFCSRFToken"
 # when current flask application restarts.
 # app.secret_key = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(32))
 # app.WTF_CSRF_SECRET_KEY = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(32))
+
+app.config.update(
+	SQLALCHEMY_DATABASE_URI='sqlite:///sqlite3/cs9163.sqlite3'
+)
 
 app.config.update(
 	SESSION_COOKIE_HTTPONLY=True,
