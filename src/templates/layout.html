@@ -21,6 +21,16 @@
                     <a class="nav-link" href="{{ url_for('spell_check') }}">SpellCheck</a>
                 </li>
                 <li class="nav-item">
+                  <a class="nav-link" href="{{ url_for('history') }}">History</a>
+                </li>
+                
+                {% if session.ifAdmin %}
+                <li class="nav-item">
+                  <a class="nav-link" href="{{ url_for('login_history') }}">LoginHistory</a>
+                </li>
+                {% endif %}
+
+                <li class="nav-item">
                     <a class="nav-link" href="{{ url_for('logout') }}">Logout</a>
                 </li>
                 {% else %}

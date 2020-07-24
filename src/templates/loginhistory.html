@@ -1,0 +1,37 @@
+{% extends 'layout.html' %}
+{% from "_formhelpers.html" import render_field %}
+{% block body %}
+
+<div class="container">
+  <div>
+    <br>
+  </div>
+  <form name="loginHistoryQuery" action="/login_history" method="POST">
+    {{ form.csrf_token }}
+    <div class="form-group">
+      {{ render_field(form.userid, class="form-control", size=32) }}
+    </div>
+    {{ render_field(form.submit, class="btn btn-primary") }}
+  </form>
+</div>
+
+<div class="container">
+  {% if records %}
+  {% for record in records %}
+    <ul class="list-group">
+      <li id="login{{ record.uid }}" class="list-group-item">User ID: {{ record.uid }}</li>
+      <li id="login{{ record.uid }}_time" class="list-group-item">Login Time: {{ record.loginTime }}</li>
+      <li id="logout{{ record.uid }}_time" class="list-group-item">Logout Time: 
+        {% if record.logoutTime != None %}
+        {{ record.logoutTime }}
+        {% else %}
+        N/A
+        {% endif %}
+      </li>
+    </ul>
+    <br>
+  {% endfor %}
+  {% endif %}
+</div>
+
+{% endblock %}

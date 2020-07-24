@@ -1,0 +1,32 @@
+{% extends 'layout.html' %}
+{% from "_formhelpers.html" import render_field %}
+{% block body %}
+
+<div class="container">
+  <div>
+    <br>
+  </div>
+  {% if query %}
+  <ul class="list-group">
+    <li id="queryid" class="list-group-item">
+      Query Unique ID: {{ query.qid }}
+    </li>
+    <li id="username" class="list-group-item">
+      Username: {{ query.username }}
+    </li>
+    <li id="querytext" class="list-group-item">
+      Query Text: {{ query.qtext }}
+    </li>
+    <li id="queryresult" class="list-group-item">
+      Query Result: {{ query.qresult }}
+    </li>
+  </ul>
+  {% else %}
+  <ul class="list-group">
+    <li class="list-group-item">No Query with given unique query id found.</li>
+    <li class="list-group-item">Or you don't have access to this query.</li>
+  </ul>
+  {% endif %}
+</div>
+
+{% endblock %}

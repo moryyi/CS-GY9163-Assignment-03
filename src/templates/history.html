@@ -1,0 +1,35 @@
+{% extends 'layout.html' %}
+{% from "_formhelpers.html" import render_field %}
+{% block body %}
+
+<div class="container">
+  <div>
+    <br>
+  </div>
+  {% if session.ifAdmin %}
+    <form id="adminSearchQueryByUsername" action="/history" method="POST">
+      {{ form.csrf_token }}
+      <div class="form-group">
+        {{ render_field(form.userquery, class="form-control", size=32) }}
+      </div>
+      {{render_field(form.submit, class="btn btn-primary")  }}
+    </form>
+    <br>
+  {% endif %}
+
+  {% if queries %}
+  <div id="numqueries" class="alert alert-primary" role="alert">Total Queries: {{ queries|length }}</div>
+  <br>
+    {% for query in queries %}
+    <ul class="list-group">
+      <li class="list-group-item">
+        <a id="query{{ query.qid }}" href="/history/query{{ query.qid }}">
+          Query#{{ query.qid }} user: {{ query.username }}
+        </a>
+      </li>
+    </ul>
+    {% endfor %}
+  {% endif %}
+</div>
+
+{% endblock %}
