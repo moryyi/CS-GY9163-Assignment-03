@@ -1,6 +1,7 @@
 flask
 flask-paranoid
 Flask-Testing
+flask_sqlalchemy
 flask_wtf
 tox
 tox-travis
