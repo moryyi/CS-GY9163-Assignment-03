@@ -141,10 +141,18 @@ class MyTest(TestCase):
     url = ROOT_URL + "/login"
     response = client.post(url, data={"uname": "testusername", "pword": "testpassword", "2fa": "testnumber"}, follow_redirects=True)
     
+    # For Flask unittest, flask session should be set manually
+    # To successfully submit text to check, we should at least provide 
+    #     the session["uid"] variable
+    with client.session_transaction() as sess:
+      sess["uid"] = 2
+      sess["log"] = True
+      sess["username"] = "testusername"
     url = ROOT_URL + "/spell_check"
     text2check = "Take a sad sogn and make it better. Remember to let her under your (skyn),.! then you b3gin to make it betta."
     response = client.post(url, data={"inputtext": text2check})
     assert response.status_code == 200
+  
 
 if __name__ == "__main__":
   unittest.main()
