@@ -174,10 +174,13 @@ def configure_routes(app):
 				userquery = form.userquery.data
 				if userquery != '':
 					existing_user = User.query.filter_by(username=userquery).first()
-					queries = Query.query\
-												.join(User, User.uid == Query.uid)\
-												.add_columns(Query.qid, Query.uid, User.username, Query.qtext, Query.qresult)\
-												.filter_by(uid=existing_user.uid).all()
+					if existing_user != None:
+						queries = Query.query\
+													.join(User, User.uid == Query.uid)\
+													.add_columns(Query.qid, Query.uid, User.username, Query.qtext, Query.qresult)\
+													.filter_by(uid=existing_user.uid).all()
+					else:
+						queries = []
 				else:
 					queries = Query.query\
 												.join(User, User.uid == Query.uid)\
