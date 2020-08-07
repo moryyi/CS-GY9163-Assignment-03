@@ -285,13 +285,13 @@ def configure_routes(app):
 		if existing_user is None:
 			return (False, "Incorrect")
 		else:
-			password = generate_password_hash(password)
 			# if password != USER_DATABASE[username]["password"]:
 			# if check_password_hash(password, USER_DATABASE[username]["password"]):
-			if check_password_hash(password, existing_user.password):
+			if not check_password_hash(existing_user.password, password):
 				return (False, "Incorrect")
 			# elif phone != USER_DATABASE[username]["phone"]:
 			elif phone != existing_user.phone:
+				print("phone error")
 				return (False, "Two-factor failure")
 			else:
 				session["username"] = existing_user.username
